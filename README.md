@@ -93,6 +93,29 @@ sh scripts/compare-apt.sh hello sed jq
 представляет типы пакетов и рёбер средствами Graphviz, а PlantUML
 показывает только два обязательных поля и сохраняет обратные рёбра.
 
+### Результаты проверки на Ubuntu 24.04
+
+В [журнале сравнения](https://github.com/Innpot/Conf-pract2/actions/runs/42539970789/job/128912491670)
+APT и программа нашли одинаковые наборы обязательных пакетов:
+
+| Пакет | Вершины | Обязательные рёбра | Сравнение порядка с `apt-get -s` |
+| --- | ---: | ---: | --- |
+| `hello` | 4 | 4 | Совпал |
+| `sed` | 7 | 10 | В APT `libc6` стоит раньше `libgcc-s1`; в DFS наоборот |
+| `jq` | 6 | 8 | Совпал |
+
+Общий цикл `libc6 → libgcc-s1 → libc6` исключает строгий порядок для
+обоих рёбер. DFS выдаёт детерминированный постпорядок. APT строит
+план распаковки и конфигурации, поэтому в симуляции `sed` выбирает
+другой порядок этих двух пакетов. Остальные позиции совпали.
+
+В Graphviz DOT все обязательные рёбра совпали с PlantUML. Штатный
+`apt-cache dotty` также выводит конфликты, например `hello → hello-traditional`,
+и помечает рёбра `Pre-Depends` синим (например `sed → libacl1`).
+PlantUML показывает `Depends` и `Pre-Depends` одинаковыми стрелками и
+помечает обратное ребро цикла меткой `cycle`.
+
+
 Справка: [apt-get](https://manpages.ubuntu.com/manpages/noble/man8/apt-get.8.html),
 [apt-cache](https://manpages.ubuntu.com/manpages/noble/man8/apt-cache.8.html),
 [PlantUML](https://plantuml.com/component-diagram).
