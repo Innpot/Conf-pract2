@@ -5,35 +5,41 @@ work=$(mktemp -d)
 trap 'rm -r -- "$work"' EXIT
 trap 'exit 1' HUP INT TERM
 
-url=$(sed -n 's/^repository = //p' examples/ubuntu.ini)
-curl -fLsS "$url" | xz -dc > "$work/Packages"
-test -s "$work/Packages"
+# Keep APT configuration and state separate from the host.
+mkdir "$work/lists" "$work/archives"
 : > "$work/status"
-mkdir "$work/lists"
+cat > "$work/sources.list" <<'EOF'
+deb [arch=amd64 signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://archive.ubuntu.com/ubuntu noble main
+EOF
+cat > "$work/apt.conf" <<EOF
+Dir::Etc::main "/dev/null";
+Dir::Etc::parts "-";
+Dir::Etc::sourcelist "$work/sources.list";
+Dir::Etc::sourceparts "-";
+Dir::State::status "$work/status";
+Dir::State::lists "$work/lists";
+Dir::Cache::archives "$work/archives";
+Dir::Cache::pkgcache "";
+Dir::Cache::srcpkgcache "";
+APT::Architecture "amd64";
+Acquire::Languages "none";
+EOF
+export APT_CONFIG="$work/apt.conf"
+export LC_ALL=C
+apt-get update
 
-apt_index() {
-    program=$1
-    shift
-    LC_ALL=C "$program" \
-        -o APT::Architecture=amd64 \
-        -o Dir::State::status="$work/status" \
-        -o Dir::State::lists="$work/lists" \
-        -o Dir::Etc::sourcelist=/dev/null \
-        -o Dir::Etc::sourceparts=- \
-        -o Dir::Cache::pkgcache= \
-        -o Dir::Cache::srcpkgcache= \
-        --with-source "$work/Packages" "$@"
-}
-
-for package in "${@:-hello}"; do
+if [ "$#" -eq 0 ]; then
+    set -- hello
+fi
+for package in "$@"; do
     sed "s/^package = .*/package = $package/" examples/ubuntu.ini \
         > "$work/compare.ini"
     printf '\n=== %s: DFS postorder ===\n' "$package"
     ./run.sh --config "$work/compare.ini" --order
     printf '\n=== apt-get: simulated install order (Inst lines) ===\n'
-    apt_index apt-get -s --no-install-recommends install "$package"
+    apt-get -s --no-install-recommends install "$package"
     printf '\n=== PlantUML ===\n'
     ./run.sh --config "$work/compare.ini" --plantuml-only
     printf '\n=== apt-cache: Graphviz DOT ===\n'
-    apt_index apt-cache --important dotty "$package"
+    apt-cache dotty "$package"
 done
