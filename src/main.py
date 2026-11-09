@@ -9,6 +9,7 @@ from .apt_index import fetch_index
 from .config import load_config
 from .fixture import load_fixture
 from .graph import build_graph
+from .visualize import ascii_tree, plantuml
 
 ERRORS = (OSError, ValueError, configparser.Error, lzma.LZMAError, EOFError)
 
@@ -37,11 +38,13 @@ def report_order(graph):
 
 
 def main(argv=None):
-    """Построить граф и напечатать список его рёбер."""
+    """Вывести PlantUML, ASCII-дерево или порядок обхода."""
     parser = argparse.ArgumentParser(description="Ubuntu dependency graph")
     parser.add_argument("--config", default="examples/ubuntu.ini")
     parser.add_argument("--order", action="store_true",
                         help="show dependency-first DFS postorder")
+    parser.add_argument("--plantuml-only", action="store_true",
+                        help="emit PlantUML without the optional ASCII tree")
     args = parser.parse_args(argv)
     try:
         config = load_config(args.config)
@@ -50,8 +53,9 @@ def main(argv=None):
         if args.order:
             report_order(graph)
         else:
-            for package, names in graph.edges.items():
-                print(f"{package}: {', '.join(names)}")
+            print(plantuml(graph))
+            if config.ascii_tree and not args.plantuml_only:
+                print("\n" + ascii_tree(graph))
     except ERRORS as error:
         print(f"Ошибка: {error}", file=sys.stderr)
         return 1

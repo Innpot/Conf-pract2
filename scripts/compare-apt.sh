@@ -32,4 +32,8 @@ for package in "${@:-hello}"; do
     ./run.sh --config "$work/compare.ini" --order
     printf '\n=== apt-get: simulated install order (Inst lines) ===\n'
     apt_index apt-get -s --no-install-recommends install "$package"
+    printf '\n=== PlantUML ===\n'
+    ./run.sh --config "$work/compare.ini" --plantuml-only
+    printf '\n=== apt-cache: Graphviz DOT ===\n'
+    apt_index apt-cache --important dotty "$package"
 done
