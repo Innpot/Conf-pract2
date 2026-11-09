@@ -11,6 +11,7 @@ class Graph:
     edges: dict[str, tuple[str, ...]]
     back_edges: list[tuple[str, str]]
     missing: list[str]
+    postorder: list[str]
 
 
 def visit(graph, index, name, exclude):
@@ -28,7 +29,7 @@ def build_graph(index, root, exclude=""):
     """Обойти только достижимые вершины; не входить в цикл повторно."""
     if root not in index:
         raise ValueError(f"Пакет {root} не найден в индексе")
-    graph = Graph(root, {}, [], [])
+    graph = Graph(root, {}, [], [], [])
     active = {root}
     stack = [visit(graph, index, root, exclude)]
     while stack:
@@ -37,6 +38,7 @@ def build_graph(index, root, exclude=""):
         if child is None:
             stack.pop()
             active.remove(parent)
+            graph.postorder.append(parent)
         elif child in active:
             graph.back_edges.append((parent, child))
         elif child not in graph.edges:

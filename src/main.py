@@ -28,17 +28,30 @@ def report_warnings(graph):
         print("Нет в индексе: " + ", ".join(graph.missing), file=sys.stderr)
 
 
+def report_order(graph):
+    """Вывести зависимости раньше пакетов, которые их требуют."""
+    if graph.back_edges:
+        print("Строгий порядок невозможен; показан постпорядок DFS.",
+              file=sys.stderr)
+    print("\n".join(graph.postorder))
+
+
 def main(argv=None):
     """Построить граф и напечатать список его рёбер."""
     parser = argparse.ArgumentParser(description="Ubuntu dependency graph")
     parser.add_argument("--config", default="examples/ubuntu.ini")
+    parser.add_argument("--order", action="store_true",
+                        help="show dependency-first DFS postorder")
     args = parser.parse_args(argv)
     try:
         config = load_config(args.config)
         graph = get_graph(config)
         report_warnings(graph)
-        for package, names in graph.edges.items():
-            print(f"{package}: {', '.join(names)}")
+        if args.order:
+            report_order(graph)
+        else:
+            for package, names in graph.edges.items():
+                print(f"{package}: {', '.join(names)}")
     except ERRORS as error:
         print(f"Ошибка: {error}", file=sys.stderr)
         return 1
